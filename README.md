@@ -95,14 +95,7 @@ pthread_t pthread_self(void);
 ```
 This is currently highlighted in [[Design choice 2]](#tricky-design-choice-2)
 
-All the functions below can be implemented WASI libc with existing constructs available in the language and don't require a new WASI function:  
-```
-
-// This is really tricky to use right.
-void pthread_exit(void *retval); 
-
-int pthread_yield(void);
-```
+All synchronization functions below can be implemented WASI libc with existing constructs available in the language (atomics) and don't require a new WASI function:  
 
 Mutexes:  
 ```
