@@ -152,6 +152,11 @@ void *pthread_getspecific(pthread_key_t key);
 int pthread_key_delete(pthread_key_t key);
 ```
 
+Extra ones:
+```
+pthread_yield
+```
+
 #### [Tricky design choice #1]
 
 This could be implemented either by cloning the current Wasm instance and executing it on another thread, or by having the instance shared amonst threads. Cloning the instance means that all the WASM constructs such as: Wasm globals (not C++ globals, these live in the Wasm linear memory, not the instance data), function tables will be thread local. 
