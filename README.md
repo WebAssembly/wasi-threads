@@ -1,6 +1,7 @@
 # Native Threads API
 
-A proposed [WebAssembly System Interface](https://github.com/WebAssembly/WASI) API to add native thread support.
+A proposed [WebAssembly System Interface](https://github.com/WebAssembly/WASI)
+API to add native thread support.
 
 ### Current Phase
 
@@ -9,7 +10,6 @@ Phase 1
 ### Champions
 
 - [Alexandru Ene](https://github.com/AlexEne)
-- 
 
 ### Phase 4 Advancement Criteria
 
@@ -18,189 +18,259 @@ _TODO before entering Phase 2._
 ## Table of Contents [if the explainer is longer than one printed page]
 
 - [Introduction](#introduction)
-- [Goals [or Motivating Use Cases, or Scenarios]](#goals-or-motivating-use-cases-or-scenarios)
+- [Goals](#goals)
 - [Non-goals](#non-goals)
 - [API walk-through](#api-walk-through)
-  - [Use case 1](#use-case-1)
+  - [Use case: support various languages](#use-case-support-various-languages)
+  - [Use case: support thread-local storage](#use-case-support-thread-local-storage)
 - [Detailed design discussion](#detailed-design-discussion)
-  - [[Tricky design choice 1]](#tricky-design-choice-1)
-  - [[Tricky design choice 2 - Adding join, detatch, cancel]](#tricky-design-choice-2)
+  - [Design choice: pthreads](#design-choice-pthreads)
+  - [Design choice: instance-per-thread](#design-choice-instance-per-thread)
 - [Considered alternatives](#considered-alternatives)
-  - [[Alternative 1]](#alternative-1)
+  - [Alternative: WebAssembly threads](#alternative-webassembly-threads)
+  - [Alternative: wasi-parallel](#alternative-wasi-parallel)
 - [Stakeholder Interest & Feedback](#stakeholder-interest--feedback)
 - [References & acknowledgements](#references--acknowledgements)
 
 ### Introduction
-This proposal looks to provide a standard API that can be used for thread creation / join and the rest of the operations that are neccessary to run native threads (such as handling threadlocals, taking locks, spawning a thread).
+This proposal looks to provide a standard API for thread creation. This is a
+WASI-level proposal that augments the WebAssembly-level [threads proposal]. That
+WebAssembly-level proposal provides the primitives necessary for shared memory,
+atomic operations, and wait/notify. This WASI-level proposal solely provides a
+mechanism for spawning threads. Any other thread-like operations (thread
+joining, locking, etc.) will use primitives from the WebAssembly-level proposal.
+
+Some background: browsers already have a mechanism for spawning threads &mdash;
+[Web Workers] &mdash; and the WebAssembly-level proposal avoided specifying how
+thread spawning should occur. This allows other uses of WebAssembly &mdash;
+i.e., outside the browser &mdash; to specify their own mechanism for spawning
+threads.
+
+[threads proposal]: https://github.com/WebAssembly/threads
+[Web Workers]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers
+
 
 ### Goals
-The goal of this proposal is to add the missing functions that are required for implementing a subset of `pthread` API. It doesn't aim to be identical to the pthreads API, but must be able to create threads that operate on the same Wasm memory, while using the atomic instrutions to synchronize on memory access.
+- __`pthreads` support__: the goal of this proposal is to add the missing
+  functions that are required to implement a subset of `pthreads` API. It does
+  not aim to be identical to the `pthreads` API, but one must be able to create
+  threads that operate on a shared Wasm memory while using the WebAssembly
+  atomic instructions to synchronize on memory access.
 
-Standardizing on this would allow re-use of existing libraries and code and remove friction from porting projects from native execution contexts to WebAssembly & WASI environments (outside the browsers).
+- __library reuse__: standardizing this API would allow re-use of existing
+  libraries and remove friction when porting projects from native
+  execution contexts to WebAssembly and WASI environments (outside the
+  browsers).
 
-A possible future direction for WebAssembly is towards supporting multiple-threads per instance. This isn't possible with the current memory model and instruction set. We aim to expose an API that would be compatible with this future direction.
+- __future-compatible__: a possible future direction for WebAssembly is towards
+  supporting multiple threads per instance. This is not possible with the
+  current memory model and instruction set. We aim to expose an API that would
+  be compatible with this future direction.
 
-For browsers, we aim to provide a way to polyfill these APIs, leaveraging web-workers, in a similar to how it works today.
+- __browser polyfills__: for browsers, we aim to provide a way to polyfill this
+  API using Web Workers providing similar functionality to what exists in
+  browsers today.
+
+
 
 ### Non-goals
+- __not POSIX compatible__: this API will not be 100% compatible with all
+  functions and options described by POSIX threads standard.
 
-The goal of this API is not to be 100% compatible with all functions and options described by POSIX threads standard.  
+- __no WebAssembly changes__: the current proposal is limited to the WASI APIs
+  signatures and behavior and does not propose changes to the Wasm instruction
+  set.
 
-The current proposal is limited to the WASI APIs signatures and behavior and doesn't propose changes to the Wasm instruction set.
+
 
 ### API walk-through
 
-The API requires the addition of a single function.  
-The mutex/signaling/TLS could be implemented using existing instructions available in WASM:  
-```
-status thread_spawn(thread_id* thread_id, const thread_attributes* attrs, thread_start_func* function, thread_args* arg);
+The API requires the addition of a single function. In pseudo-code:
+
+```C
+status thread_spawn(thread_start_func* start_func, thread_start_arg* start_arg);
 ```
 
-#### [Use case 1]
-Implementing standard libraries on top of this API (e.g. Rust stdlib, pthreads).
+Any necessary locking/signaling/thread-local storage will be implemented using
+existing instructions available in WebAssembly. Ideally, users will never use
+`thread_spawn` directly but rather compile their threaded code from a language
+that supports threads (see below).
 
-#### [Use case 2]
-Support for thread-local storage.
+#### Use case: support various languages
+
+Using this API, it should be possible to implement threads in languages like:
+- __C__, using the `pthreads` library (see the current work in [wasi-libc])
+- __Rust__, as a part of the `std` library (in the future, e.g., [here])
+
+The API should be able to support even more languages, but supporting these
+initially is a good starting point.
+
+[wasi-libc]: https://github.com/WebAssembly/wasi-libc
+[here]: https://github.com/rust-lang/rust/blob/7308c22c6a8d77e82187e290e1f7459870e48d12/library/std/src/sys/wasm/atomics/thread.rs
+
+#### Use case: support thread-local storage
+
+For languages that implement thread-local storage (TLS), the start argument can
+contain a language-specific structure with the address and (potentially) the
+length of a TLS memory region. The host WebAssembly engine will treat this
+argument as an opaque pointer &mdash; it should not introspect these
+language-specific details. In C, e.g., the start function should be a static
+trampoline-like wrapper (`wasilibc_thread_start`) that reads the actual user
+start function out of the start argument and calls this after doing some TLS
+bookkeeping (this is not different than how C starts threads natively).
+
+
 
 ### Detailed design discussion
-**TODO**: 
-* Define attributes supported.
-* Clarify data types to match how other WASI methods are specified
-* Does it need a stack_size parameter?
-* Does it need instructions on how to set up the stack size?
 
-#### How threads start
-When a thread is started by `thread_spawn` the following happens:  
-1) The module instance is is cloned.  
-2) A native thread is created.  
-3) On that thread we call into a `_start_thread` function from the Wasm module created above and forwards the `arg` parameter (a pointer to the shared memory.  
-4) `_start_thread` Function then launches the target `function` with the `arg` parameter.  
+Threads are tricky to implement. This proposal relies on a specific WebAssembly
+convention in order to work correctly. Upon a call to `thread_spawn`, the WASI
+host must:
+1. instantiate the module again &mdash; this child instance will be used for the
+   new thread
+2. in the child instance, ensure that any `shared` memories are the same ones as
+   those of the parent
+3. in the child instance, import all of the same WebAssembly objects as the
+   parent
+4. optionally, spawn a new host-level thread (other spawning mechanisms are
+   possible)
+5. calculate a non-duplicate thread ID, `tid`
+6. in the new thread, call the child instance's start function with the thread ID
+   and the start argument: `start_func(tid, start_arg)`
 
-`pthread_create` can be implemented by forwarding a call to the new `thread_spawn` API.  
-```
-int pthread_create(pthread_t* thread_id, const pthread_attr_t* attr, void* *(*start_routine)(void*), void* arg);
-```
+A WASI host that implements the above should be able to spawn threads for a
+variety of languages.
 
-The following functions can potentially be implemented either by introducing new WASI APIs similar to, or by using WASM atomics (e.g. in the case of `pthread_join`):
-```
-int pthread_join(pthread_t thread, void **retval);
+#### Design choice: pthreads
 
-// Can this work without a new WASI API?
-int pthread_detach(pthread_t thread);
+One of the goals of this API is to be able to support `pthreads` for C compiled
+to WebAssembly. Given a WASI host that implements `thread_spawn` as described
+above, what responsibility would the C language have (i.e., `libc`) to properly
+implement `pthreads`?
 
-// How would this work?
-int pthread_cancel(pthread_t thread);
+`pthread_create` must not only call WASI's `thread_spawn` but is also
+responsible for setting up the new thread's stack, TLS/TSD space, and updating
+the `pthread_t` structure. This could be implemented by (ignoring error
+conditions):
+1. configure a `struct start_args` with the user's `void *(*start_func)(void
+   *)` and `void *start_arg` (as done natively) but also with `pthread_t *thread`
+2. call `malloc` (instead of `mmap`) to allocate TLS/TSD in the shared
+   WebAssembly memory
+3. having defined a static `wasilibc_thread_start` function that takes as
+   parameters `int tid` and `void *start_args` , then in `pthread_create`, call
+   the WASI `thread_spawn` with this function and the configured `start_args`
+4. use `atomic.wait` to wait for the `start_args->thread->tid` value to change
+5. now in the child thread: once the WASI host creates the new thread instance
+   and calls `wasilibc_thread_start`, then a) set `args->thread->tid` to the
+   host-provided `tid`, b) set the `__wasilibc_pthread_self` global to point to
+   `args->thread` (this is used by `pthread_self`, e.g.), c) use `atomic.notify`
+   to inform the parent thread that the child now has a `tid`, d) start executing
+   the user's `start_func` with the user's `start_arg` &mdash; at this point the
+   new instance is executing separately in its own thread
+6. back in the parent thread: once it has been notified that the child has
+   recorded its TID, it can safely return with the `pthread_t` structure properly
+   filled out.
 
-pthread_t pthread_self(void);
-```
-This is currently highlighted in [[Design choice 2]](#tricky-design-choice-2)
+`pthread_join` has a similar `wait`/`notify` implementation, but in reverse: the
+parent thread can `wait` on the `thread->return` address to change and the child
+thread can `notify` it of this once the user's start function finishes (i.e., at
+the end of the `wasilibc_thread_start` wrapper).
 
-All synchronization functions below can be implemented WASI libc with existing constructs available in the language (atomics) and don't require a new WASI function:  
+The remainder of the `pthreads` API can be split up into what can be implemented
+and what can safely be skipped until some later date.
 
-Mutexes:  
-```
-int pthread_mutex_init(pthread_mutex_t *mutex, const void *attr);
+##### What can easily be implemented
 
-int pthread_mutex_lock(pthread_mutex_t *mutex);
+- `pthread_self` can use the `__wasilibc_pthread_self` global to return the
+  address to the current thread's `pthread_t` structure; this relies on each
+  thread mapping to a new instance (and thus a new set of globals) &mdash see
+  discussion below on "instance per thread."
+- `pthread_detach` can be implemented by using the flags already present in the
+  `pthread_t` structure.
+- `pthread_mutex_*`, `pthread_rwlock_*`, `pthread_cond_*`, `sem_*` can all be
+  implemented using existing operations in the WebAssembly [threads proposal].
+- thread-specific data (TSD), i.e., functions using `pthread_key_t`, can be
+  implemented using the memory region allocated for the thread in WebAssembly
+  shared memory.
 
-int pthread_mutex_unlock(pthread_mutex_t *mutex);
+##### What can be skipped
+- `pthread_yield` is a [deprecated] `pthreads` function; `sched_yield` is the
+  right one to use. Since it is unclear how WASI's scheduling should interact
+  with the host's, this can be deferred until someone has a use case for it.
+- `pthread_cancel` allows a parent thread to cancel a child thread; this
+  functionality is difficult (impossible?) to implement without a WebAssembly
+  mechanism to interrupt the child thread and complicates the entire
+  implementation. It can be left for later.
 
-int pthread_mutex_destroy(pthread_mutex_t *mutex);
+[deprecated]: https://man7.org/linux/man-pages/man3/pthread_yield.3.html
 
-```
+#### Design choice: instance-per-thread
 
-RW Locks:  
-```
-int pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr);
+A thread spawning mechanism for WebAssembly could be implemented in various
+ways: the way chosen here, a cloned "instance-per-thread," is one option. The
+other major option is to share the instance among many threads, as described in
+the [Weakening WebAssembly] paper. Sharing an instance among many threads, as
+described there, would require:
+ - WebAssembly objects (memories, tables, globals, functions) to allow a `shared`
+   attribute
+ - the WebAssembly specification to grow a `fork` instruction
 
-int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+[Weakening WebAssembly]: https://www.researchgate.net/publication/336447205_Weakening_WebAssembly
 
-int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);
+The "instance-per-thread" approach was chosen here because a) it matches the
+thread instantiation model of the browser (also "instance-per-thread") and b)
+the WebAssembly specification changes required for the other approach may take
+some time to materialize. In the meantime, this proposal allows threaded
+WebAssembly to progress. If in the future the WebAssembly specification were to
+add a "many-threads-per-instance" mechanism, the hope is that the API here
+should not need to change significantly, though it is unclear how much the
+changes might be.
 
-int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);
+The "instance-per-thread" approach chosen here does have its disadvantages:
+* higher memory consumption (each instance is cloned)
+* breaking behavior on non-standard functions such as `dlopen()` that require to
+  modify the function table
+* potential breaking behaviour of existing binaries once a new instruction gets
+  added. This is a low risk because `shared` attributes do not yet exist on
+  globals/tables/etc. having the `shared` attribute in a future WebAssembly spec
+  version is not a likely approach. Most likely, no attributes would be
+  interpreted as `local`/`private` as that would keep the existing behavior for
+  binaries.
 
-int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
 
-int pthread_rwlock_unlock();
-
-int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
-```
-
-Conditionals:  
-```
-int pthread_cond_init(pthread_cond_t *cond, const void *attr);
-
-int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
-
-int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, unsigned int useconds);
-
-int pthread_cond_signal(pthread_cond_t *cond);
-
-int pthread_cond_broadcast(pthread_cond_t *cond);
-
-int pthread_cond_destroy(pthread_cond_t *cond);
-```
-
-Thread-specific data:  
-```
-int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
-
-int pthread_setspecific(pthread_key_t key, const void *value);
-
-void *pthread_getspecific(pthread_key_t key);
-
-int pthread_key_delete(pthread_key_t key);
-```
-
-Extra ones:
-```
-pthread_yield
-```
-
-#### [Tricky design choice #1]
-
-This could be implemented either by cloning the current Wasm instance and executing it on another thread, or by having the instance shared amonst threads. Cloning the instance means that all the WASM constructs such as: Wasm globals (not C++ globals, these live in the Wasm linear memory, not the instance data), function tables will be thread local. 
-
-We consider this a good approach for the first implementation phase and aim to switch to a multiple threads per Wasm Instance once the `shared` attributes are added to the Wasm spec. Sharing the same instance right now is blocked on that attribute. More data on it can be found in this paper: [Weakening WebAssembly](https://www.researchgate.net/publication/336447205_Weakening_WebAssembly).
-
-There are disadvantages to this approach of a thread gets its own module instance such as:
-* Memory consumption (as each instance is cloned)
-* Breaking behavior on non-standard functions such as `dlopen()` that require to modify the function table.  
-* Potential breaking behaviour of existing binaries once a new instruction gets added. This is low risk because no attributes on globals/tables/etc. having the meaning of `shared` in a future wasm spec iteration isn't a likely approach. Most likely, no attributes would be interpreted as `local`/`private` as that would keep the existing behavior for binaries.
-
-The API here shouldn't need to change the signature if new annotations and instructions get added to the standard (e.g. `shared` and `local` flags on `globals`, `tables`, etc.). Regardless of those, the function exposed in this proposal will still take the same arguments and have the same return types in all of the potential execution modes. The function signature and observed behavior should stay the same (except dlopen behavior that is more restricted above).
-
-#### [Tricky design choice #2]
-While the following functions can potentially be implemented in wasm bytecode (is this true for `pthread_detatch`?), leaveraging the atomic operations available, it may be benefficial to have these functions included in the WASI proposal as this would aleviate bytecode size concerns for WASM binaries, performance concerns and can also potentially simplify some implementation details.
- 
-```
-int pthread_join(pthread_t thread, void **retval);
-
-int pthread_detach(pthread_t thread);
-
-int pthread_cancel(pthread_t thread);
-
-pthread_t pthread_self(void);
-```
 
 ### Considered alternatives
 
-#### [Alternative 1]
+#### Alternative: WebAssembly threads
 
-[WASI-parallel](https://github.com/WebAssembly/wasi-parallel/blob/main/docs/Explainer.md).
+Instead of exposing threads at the WASI level, thread spawning could be
+specified in the WebAssembly specification. This is the approach described in
+the [Weakening WebAssembly] paper. See the [Design choice:
+instance-per-thread](#design-choice-instance-per-thread) discussion above for
+more details.
 
-*TODO(alexene) check that this understanding is correct*   
-The wasi-parallel proposal could be used in similar ways to [OpenMP](https://www.openmp.org/). That mode of parallelism solves a category of problems (map-reduce type algorithms are suited to such an approach), but can't be applied to other workloads that are covered in this proposal that require more fine-grained control over how threads are created/destroyed and their lifetimes.
+#### Alternative: wasi-parallel
+
+[wasi-parallel] is another WASI proposal which provides a parallel "for"
+construct, similar to what, e.g., [OpenMP](https://www.openmp.org/) provides.
+[wasi-parallel] spawns `N` threads at a time (though they may not all run
+concurrently); this API spawns a single thread at a time.
+
+[wasi-parallel]: https://github.com/WebAssembly/wasi-parallel/blob/main/docs/Explainer.md
+
+
 
 ### Stakeholder Interest & Feedback
 
 TODO before entering Phase 3.
 
-[This should include a list of implementers who have expressed interest in implementing the proposal]
+<!-- [This should include a list of implementers who have expressed interest in
+implementing the proposal] -->
+
 
 ### References & acknowledgements
 
-Many thanks for valuable feedback and advice from (alphabetical order):  
+Many thanks for valuable feedback and advice from (alphabetical order):
 * [Amanieu d'Antras](https://github.com/Amanieu)
 * [Andrew Brown](https://github.com/abrown)
 * [Conrad Watt](https://github.com/conrad-watt)
