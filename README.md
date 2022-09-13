@@ -73,10 +73,10 @@ threads.
 
 
 ### Non-goals
-- __not POSIX compatible__: this API will not be 100% compatible with all
+- __full POSIX compatibity__: this API will not be 100% compatible with all
   functions and options described by POSIX threads standard.
 
-- __no WebAssembly changes__: the current proposal is limited to the WASI APIs
+- __modify core WebAssembly__: the current proposal is limited to the WASI APIs
   signatures and behavior and does not propose changes to the Wasm instruction
   set.
 
