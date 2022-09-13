@@ -116,17 +116,17 @@ contain a language-specific structure with the address and (potentially) the
 length of a TLS memory region. The host WebAssembly engine will treat this
 argument as an opaque pointer &mdash; it should not introspect these
 language-specific details. In C, e.g., the start function should be a static
-trampoline-like wrapper (`wasilibc_thread_start`) that reads the actual user
-start function out of the start argument and calls this after doing some TLS
-bookkeeping (this is not different than how C starts threads natively).
+trampoline-like wrapper (exported as `wasi_thread_start`) that reads the actual
+user start function out of the start argument and calls this after doing some
+TLS bookkeeping (this is not much different than how C starts threads natively).
 
 
 
 ### Detailed design discussion
 
 Threads are tricky to implement. This proposal relies on a specific WebAssembly
-convention in order to work correctly. Upon a call to `thread_spawn`, the WASI
-host must:
+convention in order to work correctly. Upon a call to `wasi_thread_spawn`, the
+WASI host must:
 1. instantiate the module again &mdash; this child instance will be used for the
    new thread
 2. in the child instance, ensure that any `shared` memories are the same ones as
@@ -136,8 +136,8 @@ host must:
 4. optionally, spawn a new host-level thread (other spawning mechanisms are
    possible)
 5. calculate a non-duplicate thread ID, `tid`
-6. in the new thread, call the child instance's start function with the thread ID
-   and the start argument: `start_func(tid, start_arg)`
+6. in the new thread, call the child instance's exported entry function with the
+   thread ID and the start argument: `wasi_thread_start(tid, start_arg)`
 
 A WASI host that implements the above should be able to spawn threads for a
 variety of languages.
@@ -149,33 +149,34 @@ to WebAssembly. Given a WASI host that implements `thread_spawn` as described
 above, what responsibility would the C language have (i.e., `libc`) to properly
 implement `pthreads`?
 
-`pthread_create` must not only call WASI's `thread_spawn` but is also
+`pthread_create` must not only call WASI's `wasi_thread_spawn` but is also
 responsible for setting up the new thread's stack, TLS/TSD space, and updating
-the `pthread_t` structure. This could be implemented by (ignoring error
-conditions):
-1. configure a `struct start_args` with the user's `void *(*start_func)(void
-   *)` and `void *start_arg` (as done natively) but also with `pthread_t *thread`
+the `pthread_t` structure. This could be implemented by the following steps
+(ignoring error conditions):
+1. configure a `struct start_args` with the user's `void *(*start_func)(void *)`
+   and `void *start_arg` (as done natively) but also with `pthread_t *thread`
 2. call `malloc` (instead of `mmap`) to allocate TLS/TSD in the shared
    WebAssembly memory
-3. having defined a static `wasilibc_thread_start` function that takes as
-   parameters `int tid` and `void *start_args` , then in `pthread_create`, call
-   the WASI `thread_spawn` with this function and the configured `start_args`
-4. use `atomic.wait` to wait for the `start_args->thread->tid` value to change
+3. define a static, exported `wasi_thread_start` function that takes as
+   parameters `int tid` and `void *start_args`
+4. in `pthread_create`, call `wasi_thread_spawn` with the configured
+   `start_args` and use `atomic.wait` to wait for the `start_args->thread->tid`
+   value to change
 5. now in the child thread: once the WASI host creates the new thread instance
-   and calls `wasilibc_thread_start`, then a) set `args->thread->tid` to the
+   and calls `wasi_thread_start`, then a) set `args->thread->tid` to the
    host-provided `tid`, b) set the `__wasilibc_pthread_self` global to point to
    `args->thread` (this is used by `pthread_self`, e.g.), c) use `atomic.notify`
-   to inform the parent thread that the child now has a `tid`, d) start executing
-   the user's `start_func` with the user's `start_arg` &mdash; at this point the
-   new instance is executing separately in its own thread
+   to inform the parent thread that the child now has a `tid`, d) start
+   executing the user's `start_func` with the user's `start_arg` &mdash; at this
+   point the new instance is executing separately in its own thread
 6. back in the parent thread: once it has been notified that the child has
-   recorded its TID, it can safely return with the `pthread_t` structure properly
-   filled out.
+   recorded its TID, it can safely return with the `pthread_t` structure
+   properly filled out.
 
 `pthread_join` has a similar `wait`/`notify` implementation, but in reverse: the
 parent thread can `wait` on the `thread->return` address to change and the child
 thread can `notify` it of this once the user's start function finishes (i.e., at
-the end of the `wasilibc_thread_start` wrapper).
+the end of the `wasi_thread_start` wrapper).
 
 The remainder of the `pthreads` API can be split up into what can be implemented
 and what can safely be skipped until some later date.
@@ -218,8 +219,8 @@ ways: the way chosen here, a cloned "instance-per-thread," is one option. The
 other major option is to share the instance among many threads, as described in
 the [Weakening WebAssembly] paper. Sharing an instance among many threads, as
 described there, would require:
- - WebAssembly objects (memories, tables, globals, functions) to allow a `shared`
-   attribute
+ - WebAssembly objects (memories, tables, globals, functions) to allow a
+   `shared` attribute
  - the WebAssembly specification to grow a `fork` instruction
 
 [Weakening WebAssembly]: https://www.researchgate.net/publication/336447205_Weakening_WebAssembly
