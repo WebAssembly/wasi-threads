@@ -63,8 +63,7 @@ threads.
   browsers).
 
 - __future-compatible__: a possible future direction for WebAssembly is towards
-  supporting multiple threads per instance. This is not possible with the
-  current memory model and instruction set. We aim to expose an API that would
+  supporting multiple threads per instance. We aim to expose an API that would
   be compatible with this future direction.
 
 - __browser polyfills__: for browsers, we aim to provide a way to polyfill this
