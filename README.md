@@ -84,14 +84,16 @@ threads.
 
 ### API walk-through
 
-The API requires the addition of a single function. In pseudo-code:
+The API consists of a single function. In pseudo-code:
 
 ```C
-status thread_spawn(thread_start_func* start_func, thread_start_arg* start_arg);
+status wasi_thread_spawn(thread_start_arg* start_arg);
 ```
 
-Any necessary locking/signaling/thread-local storage will be implemented using
-existing instructions available in WebAssembly. Ideally, users will never use
+The host implementing `wasi_thread_spawn` will call a predetermined function
+export (`wasi_thread_start`) in a new WebAssembly instance. Any necessary
+locking/signaling/thread-local storage will be implemented using existing
+instructions available in WebAssembly. Ideally, users will never use
 `thread_spawn` directly but rather compile their threaded code from a language
 that supports threads (see below).
 
@@ -202,6 +204,12 @@ and what can safely be skipped until some later date.
   implementation. It can be left for later.
 
 [deprecated]: https://man7.org/linux/man-pages/man3/pthread_yield.3.html
+
+##### What _has_ been implemented
+
+`wasi-libc` contains an implementation of `pthreads` using `wasi-threads`. The
+implementation is currently in progress: see the [list of threads-related
+PRs](https://github.com/WebAssembly/wasi-libc/pulls?q=is%3Apr+threads).
 
 #### Design choice: instance-per-thread
 
