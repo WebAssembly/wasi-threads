@@ -200,10 +200,10 @@ and what can safely be skipped until some later date.
 - `pthread_yield` is a [deprecated] `pthreads` function; `sched_yield` is the
   right one to use. Since it is unclear how WASI's scheduling should interact
   with the host's, this can be deferred until someone has a use case for it.
-- `pthread_cancel` allows a parent thread to cancel a child thread; this
-  functionality is difficult (impossible?) to implement without a WebAssembly
-  mechanism to interrupt the child thread and complicates the entire
-  implementation. It can be left for later.
+- `pthread_cancel` allows a parent thread to cancel a child thread; in
+  particular, asynchronous cancellation is difficult (impossible?) to implement
+  without a WebAssembly mechanism to interrupt the child thread and it
+  complicates the entire implementation. It can be left for later.
 
 [deprecated]: https://man7.org/linux/man-pages/man3/pthread_yield.3.html
 
