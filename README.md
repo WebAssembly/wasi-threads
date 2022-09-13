@@ -161,7 +161,8 @@ the `pthread_t` structure. This could be implemented by the following steps
    parameters `int tid` and `void *start_args`
 4. in `pthread_create`, call `wasi_thread_spawn` with the configured
    `start_args` and use `atomic.wait` to wait for the `start_args->thread->tid`
-   value to change
+   value to change (note that for web polyfills this may not be necessary since
+   creation of web workers is not synchronous)
 5. now in the child thread: once the WASI host creates the new thread instance
    and calls `wasi_thread_start`, then a) set `args->thread->tid` to the
    host-provided `tid`, b) set the `__wasilibc_pthread_self` global to point to
