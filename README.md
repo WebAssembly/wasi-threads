@@ -15,7 +15,7 @@ Phase 1
 
 _TODO before entering Phase 2._
 
-## Table of Contents [if the explainer is longer than one printed page]
+## Table of Contents
 
 - [Introduction](#introduction)
 - [Goals](#goals)
