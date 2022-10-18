@@ -1,4 +1,4 @@
-# Native Threads API
+# `wasi-threads`
 
 A proposed [WebAssembly System Interface](https://github.com/WebAssembly/WASI)
 API to add native thread support.
