@@ -94,8 +94,8 @@ The host implementing `wasi_thread_spawn` will call a predetermined function
 export (`wasi_thread_start`) in a new WebAssembly instance. Any necessary
 locking/signaling/thread-local storage will be implemented using existing
 instructions available in WebAssembly. Ideally, users will never use
-`thread_spawn` directly but rather compile their threaded code from a language
-that supports threads (see below).
+`wasi_thread_spawn` directly but rather compile their threaded code from a
+language that supports threads (see below).
 
 #### Use case: support various languages
 
@@ -135,7 +135,9 @@ WASI host must:
    parent
 4. optionally, spawn a new host-level thread (other spawning mechanisms are
    possible)
-5. calculate a non-duplicate thread ID, `tid`
+5. calculate a positive, non-duplicate thread ID, `tid`, and return it to the
+   caller; any error in the previous steps is indicated by returning a negative
+   error code.
 6. in the new thread, call the child instance's exported entry function with the
    thread ID and the start argument: `wasi_thread_start(tid, start_arg)`
 
