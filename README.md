@@ -90,6 +90,9 @@ The API consists of a single function. In pseudo-code:
 status wasi_thread_spawn(thread_start_arg* start_arg);
 ```
 
+where the `status` is a unique non-negative integer thread ID of the new
+thread or negative number representing an error in case the thread failed to
+start.
 The host implementing `wasi_thread_spawn` will call a predetermined function
 export (`wasi_thread_start`) in a new WebAssembly instance. Any necessary
 locking/signaling/thread-local storage will be implemented using existing
