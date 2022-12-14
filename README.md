@@ -149,13 +149,28 @@ variety of languages.
 
 ### TID (thread ID)
 
-TID is a 32-bit integer provided by the host to identify threads created
-with `wasi_thread_spawn`.
+TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
+
+* TIDs are managed and provided by host.
 
 * TID 0 is reserved. `wasi_thread_spawn` should not return this value.
 
+  * It's widely assumed in musl/wasi-libc.
+
 * The upper-most 3-bits of TID are always 0.
   `wasi_thread_spawn` should not return values with these bits set.
+
+  * The most significant bit is the sign bit. As `wasi_thread_spawn` uses
+    signed integer and uses negative values to indicate errors, a TID needs
+    to be positive.
+
+  * The second bit need to be 0 in order to be compatible with the TID-based
+    locking implementation in musl/wasi-libc.
+
+  * The third bit need to be 0 in order to make an extra room for other
+    reserved values in wasi-libc.
+    For example, it can be used to indicate the main thread, which doesn't
+    have a TID in the current version of this proposal.
 
 #### Design choice: pthreads
 
