@@ -147,6 +147,16 @@ WASI host must:
 A WASI host that implements the above should be able to spawn threads for a
 variety of languages.
 
+### TID (thread ID)
+
+TID is a 32-bit integer provided by the host to identify threads created
+with `wasi_thread_spawn`.
+
+* TID 0 is reserved. `wasi_thread_spawn` should not return this value.
+
+* The upper-most 3-bits of TID are always 0.
+  `wasi_thread_spawn` should not return values with these bits set.
+
 #### Design choice: pthreads
 
 One of the goals of this API is to be able to support `pthreads` for C compiled
