@@ -84,10 +84,11 @@ threads.
 
 ### API walk-through
 
-The API consists of a single function. In pseudo-code:
+The API consists of two functions. In pseudo-code:
 
 ```C
 status wasi_thread_spawn(thread_start_arg* start_arg);
+void wasi_thread_exit(void);
 ```
 
 where the `status` is a unique non-negative integer thread ID of the new
@@ -171,6 +172,43 @@ TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
     reserved values in wasi-libc.
     For example, it can be used to indicate the main thread, which doesn't
     have a TID in the current version of this proposal.
+
+### Thread group
+
+* The main thread starts with a thread group which only contains
+  the main thread.
+
+* Threads created by a thread in a thread group using `wasi_thread_spawn`
+  is added to the thread group.
+
+* When a thread is terminated, it's removed from the thread group.
+
+### Voluntary thread termination
+
+A thread can terminate itself voluntarily, either by calling
+`wasi_thread_exit`, or by returning from `wasi_thread_start`.
+
+### Changes to WASI `proc_exit`
+
+With this proposal, the `proc_exit` function takes extra responsibility
+to terminate all threads in the thread group, not only the calling one.
+
+Any of threads in the thread group can call `proc_exit`.
+
+### Traps
+
+When a thread caused a trap, it terminates all threads in the thread group
+similarly to `proc_exit`.
+
+### Thread group exit status
+
+If one or more threads call WASI `proc_exit` or raise a trap,
+one of them is chosen by the runtime to represent the exit status
+of the thread group.
+It's non deterministic which one is chosen.
+
+If the thread group gets empty without involving `proc_exit` or a trap,
+it's treated as if the last thread called `proc_exit` with exit code 0.
 
 #### Design choice: pthreads
 
