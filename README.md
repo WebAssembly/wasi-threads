@@ -173,15 +173,17 @@ TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
     For example, it can be used to indicate the main thread, which doesn't
     have a TID in the current version of this proposal.
 
-### Thread group
+### Process
 
-* The main thread starts with a thread group which only contains
+* A process is a group of threads.
+
+* The main thread starts with a process which only contains
   the main thread.
 
-* Threads created by a thread in a thread group using `wasi_thread_spawn`
-  is added to the thread group.
+* Threads created by a thread in a process using `wasi_thread_spawn`
+  is added to the process.
 
-* When a thread is terminated, it's removed from the thread group.
+* When a thread is terminated, it's removed from the process.
 
 ### Voluntary thread termination
 
@@ -191,23 +193,23 @@ A thread can terminate itself voluntarily, either by calling
 ### Changes to WASI `proc_exit`
 
 With this proposal, the `proc_exit` function takes extra responsibility
-to terminate all threads in the thread group, not only the calling one.
+to terminate all threads in the process, not only the calling one.
 
-Any of threads in the thread group can call `proc_exit`.
+Any of threads in the process can call `proc_exit`.
 
 ### Traps
 
-When a thread caused a trap, it terminates all threads in the thread group
+When a thread caused a trap, it terminates all threads in the process
 similarly to `proc_exit`.
 
-### Thread group exit status
+### Process exit status
 
 If one or more threads call WASI `proc_exit` or raise a trap,
 one of them is chosen by the runtime to represent the exit status
-of the thread group.
+of the process.
 It's non deterministic which one is chosen.
 
-If the thread group gets empty without involving `proc_exit` or a trap,
+If the process gets empty without involving `proc_exit` or a trap,
 it's treated as if the last thread called `proc_exit` with exit code 0.
 
 #### Design choice: pthreads
