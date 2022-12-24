@@ -128,20 +128,25 @@ TLS bookkeeping (this is not much different than how C starts threads natively).
 ### Detailed design discussion
 
 Threads are tricky to implement. This proposal relies on a specific WebAssembly
-convention in order to work correctly. Upon a call to `wasi_thread_spawn`, the
-WASI host must:
+convention in order to work correctly.
+
+When instantiating a module which is expected to run with wasi-threads,
+the WASI host must:
+
+1. create and provide shared memories to satisfy the module's imports.
+
+Upon a call to `wasi_thread_spawn`, the WASI host must:
+
 1. instantiate the module again &mdash; this child instance will be used for the
    new thread
-2. in the child instance, ensure that any `shared` memories are the same ones as
-   those of the parent
-3. in the child instance, import all of the same WebAssembly objects as the
-   parent
-4. optionally, spawn a new host-level thread (other spawning mechanisms are
+2. in the child instance, import all of the same WebAssembly objects,
+   including the above mentioned shared memories, as the parent
+3. optionally, spawn a new host-level thread (other spawning mechanisms are
    possible)
-5. calculate a positive, non-duplicate thread ID, `tid`, and return it to the
+4. calculate a positive, non-duplicate thread ID, `tid`, and return it to the
    caller; any error in the previous steps is indicated by returning a negative
    error code.
-6. in the new thread, call the child instance's exported entry function with the
+5. in the new thread, call the child instance's exported entry function with the
    thread ID and the start argument: `wasi_thread_start(tid, start_arg)`
 
 A WASI host that implements the above should be able to spawn threads for a
