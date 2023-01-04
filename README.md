@@ -84,11 +84,10 @@ threads.
 
 ### API walk-through
 
-The API consists of two functions. In pseudo-code:
+The API consists of a single function. In pseudo-code:
 
 ```C
 status wasi_thread_spawn(thread_start_arg* start_arg);
-void wasi_thread_exit(void);
 ```
 
 where the `status` is a unique non-negative integer thread ID of the new
@@ -187,8 +186,8 @@ TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
 
 ### Voluntary thread termination
 
-A thread can terminate itself voluntarily, either by calling
-`wasi_thread_exit`, or by returning from `wasi_thread_start`.
+A thread can terminate itself voluntarily by returning from
+`wasi_thread_start`.
 
 ### Changes to WASI `proc_exit`
 
