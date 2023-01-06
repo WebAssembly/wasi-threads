@@ -208,8 +208,9 @@ one of them is chosen by the runtime to represent the exit status
 of the process.
 It's non deterministic which one is chosen.
 
-If the process gets empty without involving `proc_exit` or a trap,
-it's treated as if the last thread called `proc_exit` with exit code 0.
+If all the threads in the process have been terminated without calling
+`proc_exit` or raising a trap, it's treated as if the last thread called
+`proc_exit` with exit code 0.
 
 #### Design choice: pthreads
 
