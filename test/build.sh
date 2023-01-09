@@ -7,6 +7,6 @@ for input in testsuite/*.c; do
 
   if [ "$input" -nt "$output" ]; then
     echo "Compiling $input"
-    $CC "$input" -o "$output"
+    $CC "$input" testsuite/wasi_thread_spawn.S -o "$output"
   fi
 done
