@@ -180,7 +180,7 @@ TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
   the main thread.
 
 * Threads created by a thread in a process using `wasi_thread_spawn`
-  is added to the process.
+  are added to the process.
 
 * When a thread is terminated, it's removed from the process.
 
@@ -194,7 +194,7 @@ A thread can terminate itself voluntarily by returning from
 With this proposal, the `proc_exit` function takes extra responsibility
 to terminate all threads in the process, not only the calling one.
 
-Any of threads in the process can call `proc_exit`.
+Any of the threads in the process can call `proc_exit`.
 
 ### Traps
 
