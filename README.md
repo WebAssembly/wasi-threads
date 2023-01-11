@@ -198,8 +198,7 @@ Any of the threads in the process can call `proc_exit`.
 
 ### Traps
 
-When a thread caused a trap, it terminates all threads in the process
-similarly to `proc_exit`.
+When a trap occurs in any thread, the entire process is terminated.
 
 ### Process exit status
 
