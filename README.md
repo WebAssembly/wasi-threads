@@ -157,8 +157,8 @@ When `wasi_thread_spawn` successfully spawns a thread, it returns a thread ID
 (TID) &mdash; 32-bit integer with several restrictions. TIDs are managed and
 provided by the WASI host. To avoid compatibility issues in wasi-libc, `0` is
 reserved; `wasi_thread_spawn` should not return it. To avoid leaking
-information, the host may choose to return random TIDs (as opposed to leaking OS
-TIDs).
+information, the host may choose to return arbitrary TIDs (as opposed to leaking
+OS TIDs).
 
 TIDs returned by `wasi_thread_spawn` must always zero the uppermost three bits:
 - the most significant bit is the sign bit; `wasi_thread_spawn` uses negative
