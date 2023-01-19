@@ -129,10 +129,10 @@ TLS bookkeeping (this is not much different than how C starts threads natively).
 
 ### Detailed design discussion
 
-Threads are tricky to implement. This proposal relies on a specific WebAssembly
-convention in order to work correctly. When instantiating a module which is
-expected to run with `wasi-threads`, the WASI host must allocate shared memories
-to satisfy the module's imports.
+Threads are tricky to implement. This proposal relies on a specific convention
+in order to work correctly. When instantiating a module which is expected to run
+with `wasi-threads`, the WASI host must first allocate shared memories to
+satisfy the module's imports.
 
 Upon a call to `wasi_thread_spawn`, the WASI host must:
 
