@@ -177,6 +177,45 @@ TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
     For example, it can be used to indicate the main thread, which doesn't
     have a TID in the current version of this proposal.
 
+### Process
+
+* A process is a group of threads.
+
+* The main thread starts with a process which only contains
+  the main thread.
+
+* Threads created by a thread in a process using `wasi_thread_spawn`
+  are added to the process.
+
+* When a thread is terminated, it's removed from the process.
+
+### Voluntary thread termination
+
+A thread can terminate itself voluntarily by returning from
+`wasi_thread_start`.
+
+### Changes to WASI `proc_exit`
+
+With this proposal, the `proc_exit` function takes extra responsibility
+to terminate all threads in the process, not only the calling one.
+
+Any of the threads in the process can call `proc_exit`.
+
+### Traps
+
+When a trap occurs in any thread, the entire process is terminated.
+
+### Process exit status
+
+If one or more threads call WASI `proc_exit` or raise a trap,
+one of them is chosen by the runtime to represent the exit status
+of the process.
+It's non deterministic which one is chosen.
+
+If all the threads in the process have been terminated without calling
+`proc_exit` or raising a trap, it's treated as if the last thread called
+`proc_exit` with exit code 0.
+
 #### Design choice: pthreads
 
 One of the goals of this API is to be able to support `pthreads` for C compiled
