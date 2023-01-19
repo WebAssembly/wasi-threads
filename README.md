@@ -24,6 +24,8 @@ _TODO before entering Phase 2._
   - [Use case: support various languages](#use-case-support-various-languages)
   - [Use case: support thread-local storage](#use-case-support-thread-local-storage)
 - [Detailed design discussion](#detailed-design-discussion)
+  - [Design choice: thread IDs](#design-choice-thread-ids)
+  - [Design choice: termination](#design-choice-termination)
   - [Design choice: pthreads](#design-choice-pthreads)
   - [Design choice: instance-per-thread](#design-choice-instance-per-thread)
 - [Considered alternatives](#considered-alternatives)
@@ -90,9 +92,9 @@ The API consists of a single function. In pseudo-code:
 status wasi_thread_spawn(thread_start_arg* start_arg);
 ```
 
-where the `status` is a unique non-negative integer thread ID of the new
-thread or negative number representing an error in case the thread failed to
-start.
+where the `status` is a unique non-negative integer thread ID (TID) of the new
+thread (see [Design choice: thread IDs](#design-choice-thread-ids)) or a
+negative number representing an error if the host failed to spawn the thread.
 The host implementing `wasi_thread_spawn` will call a predetermined function
 export (`wasi_thread_start`) in a new WebAssembly instance. Any necessary
 locking/signaling/thread-local storage will be implemented using existing
@@ -128,12 +130,9 @@ TLS bookkeeping (this is not much different than how C starts threads natively).
 ### Detailed design discussion
 
 Threads are tricky to implement. This proposal relies on a specific WebAssembly
-convention in order to work correctly.
-
-When instantiating a module which is expected to run with wasi-threads,
-the WASI host must:
-
-1. create and provide shared memories to satisfy the module's imports.
+convention in order to work correctly. When instantiating a module which is
+expected to run with `wasi-threads`, the WASI host must allocate shared memories
+to satisfy the module's imports.
 
 Upon a call to `wasi_thread_spawn`, the WASI host must:
 
@@ -152,69 +151,39 @@ Upon a call to `wasi_thread_spawn`, the WASI host must:
 A WASI host that implements the above should be able to spawn threads for a
 variety of languages.
 
-### TID (thread ID)
+#### Design choice: thread IDs
 
-TID is a 32-bit integer to identify threads created with `wasi_thread_spawn`.
+When `wasi_thread_spawn` successfully spawns a thread, it returns a thread ID
+(TID) &mdash; 32-bit integer with several restrictions. TIDs are managed and
+provided by the WASI host. To avoid compatibility issues in wasi-libc, `0` is
+reserved; `wasi_thread_spawn` should not return it. To avoid leaking
+information, the host may choose to return random TIDs (as opposed to leaking OS
+TIDs).
 
-* TIDs are managed and provided by host.
+TIDs returned by `wasi_thread_spawn` must always zero the uppermost three bits:
+- the most significant bit is the sign bit; `wasi_thread_spawn` uses negative
+  values to indicate errors, so a valid TID must zero this bit (i.e., a valid
+  TID is always positive)
+- the second most significant bit is used for TID-based locking in wasi-libc
+  &mdash; this must be zeroed initially in a valid TID
+- the third most significant bit allows wasi-libc to mark threads as the main
+  thread; it is zeroed by any thread returned by `wasi_thread_spawn`
 
-* TID 0 is reserved. `wasi_thread_spawn` should not return this value.
+#### Design choice: termination
 
-  * It's widely assumed in musl/wasi-libc.
+A `wasi-threads` module initially executes a single thread &mdash; the main
+thread. As `wasi_thread_spawn` is called, more threads begin to execute. Threads
+terminate in the following ways:
 
-* The upper-most 3-bits of TID are always 0.
-  `wasi_thread_spawn` should not return values with these bits set.
+- __voluntarily__, by returning from `wasi_thread_start`; other threads continue
+  to execute
+- __upon a trap__ in any thread; all threads are immediately terminated
+- __upon a `proc_exit` call__ in any thread; all threads are immediately
+  terminated.
 
-  * The most significant bit is the sign bit. As `wasi_thread_spawn` uses
-    signed integer and uses negative values to indicate errors, a TID needs
-    to be positive.
-
-  * The second bit need to be 0 in order to be compatible with the TID-based
-    locking implementation in musl/wasi-libc.
-
-  * The third bit need to be 0 in order to make an extra room for other
-    reserved values in wasi-libc.
-    For example, it can be used to indicate the main thread, which doesn't
-    have a TID in the current version of this proposal.
-
-### Process
-
-* A process is a group of threads.
-
-* The main thread starts with a process which only contains
-  the main thread.
-
-* Threads created by a thread in a process using `wasi_thread_spawn`
-  are added to the process.
-
-* When a thread is terminated, it's removed from the process.
-
-### Voluntary thread termination
-
-A thread can terminate itself voluntarily by returning from
-`wasi_thread_start`.
-
-### Changes to WASI `proc_exit`
-
-With this proposal, the `proc_exit` function takes extra responsibility
-to terminate all threads in the process, not only the calling one.
-
-Any of the threads in the process can call `proc_exit`.
-
-### Traps
-
-When a trap occurs in any thread, the entire process is terminated.
-
-### Process exit status
-
-If one or more threads call WASI `proc_exit` or raise a trap,
-one of them is chosen by the runtime to represent the exit status
-of the process.
-It's non deterministic which one is chosen.
-
-If all the threads in the process have been terminated without calling
-`proc_exit` or raising a trap, it's treated as if the last thread called
-`proc_exit` with exit code 0.
+If multiple threads terminate simultaneously and for different reasons (e.g.,
+different `proc_exit` codes), one reason is chosen non-deterministically as the
+reason returned by the host.
 
 #### Design choice: pthreads
 
