@@ -175,8 +175,8 @@ A `wasi-threads` module initially executes a single thread &mdash; the main
 thread. As `wasi_thread_spawn` is called, more threads begin to execute. Threads
 terminate in the following ways:
 
-- __voluntarily__, by returning from `wasi_thread_start`; other threads continue
-  to execute
+- __upon return__ from `wasi_thread_start`, and other threads continue to
+  execute
 - __upon a trap__ in any thread; all threads are immediately terminated
 - __upon a `proc_exit` call__ in any thread; all threads are immediately
   terminated.
