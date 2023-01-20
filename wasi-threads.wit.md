@@ -8,11 +8,8 @@ Its goal is to provide functions that allow implementation of a subset of `pthre
 ## thread-id
 
 ```wit
-/// The result of the `thread-spawn()` function.
-/// If spawning the thread was successful, the value is positive
-/// and represents a unique thread identifier. Otherwise, the
-/// value is negative and it represents error code.
-type thread-spawn-result = s32
+/// Unique thread identifier.
+type thread-id = u32
 ```
 
 ## start-arg
@@ -22,6 +19,16 @@ type thread-spawn-result = s32
 type start-arg = u32
 ```
 
+## errno
+
+```wit
+/// Error codes returned by the `thread-spawn` function.
+enum errno {
+    /// TBD
+    eagain,
+}
+```
+
 ## thread_spawn
 
 ```wit
@@ -29,5 +36,5 @@ type start-arg = u32
 thread-spawn: func(
     /// A value being passed to a start function (`wasi_thread_start()`).
     start-arg: start-arg,
-) -> thread-spawn-result
+) -> result<thread-id, errno>
 ```
