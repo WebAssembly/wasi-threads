@@ -178,10 +178,6 @@ terminate in the following ways:
 - __upon a `proc_exit` call__ in any thread; all threads are immediately
   terminated.
 
-If multiple threads terminate simultaneously and for different reasons (e.g.,
-different `proc_exit` codes), one reason is chosen non-deterministically as the
-reason returned by the host.
-
 #### Design choice: pthreads
 
 One of the goals of this API is to be able to support `pthreads` for C compiled
