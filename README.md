@@ -155,19 +155,16 @@ variety of languages.
 
 When `wasi_thread_spawn` successfully spawns a thread, it returns a thread ID
 (TID) &mdash; 32-bit integer with several restrictions. TIDs are managed and
-provided by the WASI host. To avoid compatibility issues in wasi-libc, `0` is
-reserved; `wasi_thread_spawn` should not return it. To avoid leaking
-information, the host may choose to return arbitrary TIDs (as opposed to leaking
-OS TIDs).
+provided by the WASI host. To avoid leaking information, the host may choose to
+return arbitrary TIDs (as opposed to leaking OS TIDs).
 
-TIDs returned by `wasi_thread_spawn` must always zero the uppermost three bits:
-- the most significant bit is the sign bit; `wasi_thread_spawn` uses negative
-  values to indicate errors, so a valid TID must zero this bit (i.e., a valid
-  TID is always positive)
-- the second most significant bit is used for TID-based locking in wasi-libc
-  &mdash; this must be zeroed initially in a valid TID
-- the third most significant bit allows wasi-libc to mark threads as the main
-  thread; it is zeroed by any thread returned by `wasi_thread_spawn`
+Valid TIDs fall in the range $[1, 2^{29})$. Some considerations apply:
+- `0` is reserved for compatibility reasons with existing libraries (e.g.,
+  wasi-libc) and must not be returned by `wasi_thread_spawn`
+- the uppermost three bits of a valid TID must always be `0`. The most
+  significant bit is the sign bit and recall that `wasi_thread_spawn` uses
+  negative values to indicate errors. The remaining bits are reserved for
+  compatibility with existing language implementations.
 
 #### Design choice: termination
 
