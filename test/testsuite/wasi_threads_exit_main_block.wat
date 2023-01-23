@@ -1,5 +1,5 @@
 ;; When the main thread calls proc_exit, it should terminate
-;; a thread blocking in `memory.atomic.wait32` opecode.
+;; a thread blocking in `memory.atomic.wait32` opcode.
 ;;
 ;; linear memory usage:
 ;;   0: notify/wait
