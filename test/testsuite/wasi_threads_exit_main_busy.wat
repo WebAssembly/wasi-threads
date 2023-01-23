@@ -1,5 +1,8 @@
 ;; When the main thread calls proc_exit, it should terminate
 ;; a busy-looping thread.
+;;
+;; linear memory usage:
+;;   0: wait
 
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)

@@ -1,17 +1,22 @@
 ;; Create a thread with thread-spawn and perform a few sanity checks.
 
+;; linear memory usage:
+;;   0: notify/wait
+;;   4: tid
+;;   8: user_arg
+
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
   (func $thread_spawn (import "wasi" "thread_spawn") (param i32) (result i32))
   (func $proc_exit (import "wasi_snapshot_preview1" "proc_exit") (param i32))
-  (func (export "wasi_thread_start") (param i32 i32)
+  (func (export "wasi_thread_start") (param $tid i32) (param $user_arg i32)
     ;; store tid
     i32.const 4
-    local.get 0
+    local.get $tid
     i32.store
     ;; store user pointer
     i32.const 8
-    local.get 1
+    local.get $user_arg
     i32.store
     ;; notify the main
     i32.const 0
@@ -23,12 +28,12 @@
     drop
     ;; returning from wasi_thread_start terminates only this thread
   )
-  (func (export "_start") (local i32)
+  (func (export "_start") (local $tid i32)
     ;; spawn a thread
     i32.const 12345  ;; user pointer
     call $thread_spawn
     ;; check error
-    local.tee 0 ;; save the tid to check later
+    local.tee $tid ;; save the tid to check later
     i32.const 0
     i32.le_s
     if
@@ -46,7 +51,7 @@
       unreachable
     end
     ;; check the tid
-    local.get 0
+    local.get $tid
     i32.const 4
     i32.load
     i32.ne

@@ -1,5 +1,11 @@
 ;; When the main thread calls proc_exit, it should terminate
 ;; a thread blocking in a WASI call. (poll_oneoff)
+;;
+;; linear memory usage:
+;;   0: wait
+;;   100: poll_oneoff subscription
+;;   200: poll_oneoff event
+;;   300: poll_oneoff return value
 
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
