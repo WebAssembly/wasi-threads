@@ -2,5 +2,5 @@
 
 set -e
 
-./build-wat.sh
-./build-c.sh
+./scripts/build-wat.sh
+./scripts/build-c.sh
