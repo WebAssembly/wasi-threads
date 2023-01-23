@@ -18,6 +18,8 @@
     i32.const 8
     local.get $user_arg
     i32.store
+    ;; store fence
+    atomic.fence
     ;; notify the main
     i32.const 0
     i32.const 1
@@ -50,6 +52,8 @@
     if
       unreachable
     end
+    ;; load fence
+    atomic.fence
     ;; check the tid
     local.get $tid
     i32.const 4
