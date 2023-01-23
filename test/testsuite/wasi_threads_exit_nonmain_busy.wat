@@ -1,3 +1,6 @@
+;; When a non-main thread calls proc_exit, it should terminate
+;; the main thread which is busy-looping.
+
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
   (func $thread_spawn (import "wasi" "thread_spawn") (param i32) (result i32))

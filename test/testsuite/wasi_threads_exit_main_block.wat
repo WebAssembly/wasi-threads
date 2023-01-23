@@ -1,3 +1,6 @@
+;; When the main thread calls proc_exit, it should terminate
+;; a thread blocking in `memory.atomic.wait32` opecode.
+
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
   (func $thread_spawn (import "wasi" "thread_spawn") (param i32) (result i32))

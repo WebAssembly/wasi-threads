@@ -1,3 +1,5 @@
+;; Create a thread with thread-spawn and perform a few sanity checks.
+
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
   (func $thread_spawn (import "wasi" "thread_spawn") (param i32) (result i32))
