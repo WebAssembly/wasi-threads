@@ -7,7 +7,7 @@
 
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
-  (func $thread_spawn (import "wasi" "thread_spawn") (param i32) (result i32))
+  (func $thread_spawn (import "wasi" "thread-spawn") (param i32) (result i32))
   (func $proc_exit (import "wasi_snapshot_preview1" "proc_exit") (param i32))
   (func (export "wasi_thread_start") (param $tid i32) (param $user_arg i32)
     ;; store tid
