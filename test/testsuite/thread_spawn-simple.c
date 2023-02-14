@@ -19,7 +19,7 @@ void __wasi_thread_start_C(int thread_id, int *start_arg)
 {
     shared_t *data = (shared_t *)start_arg;
 
-    data->th_ready = 1;
+    __atomic_store_n(&data->th_ready, 1, __ATOMIC_SEQ_CST);
     __builtin_wasm_memory_atomic_notify(&data->th_ready, 1);
 
     // so we can have all the threads alive at the same time
@@ -34,7 +34,7 @@ void __wasi_thread_start_C(int thread_id, int *start_arg)
     data->value += 8;
     data->tid = thread_id;
 
-    data->th_done = 1;
+    __atomic_store_n(&data->th_done, 1, __ATOMIC_SEQ_CST);
     __builtin_wasm_memory_atomic_notify(&data->th_done, 1);
 }
 
@@ -57,6 +57,7 @@ int main(int argc, char **argv)
 
     for (i = 0; i < data_count; i++)
     {
+        __atomic_store_n(&data[i].th_continue, 1, __ATOMIC_SEQ_CST);
         __builtin_wasm_memory_atomic_notify(&data[i].th_continue, 1);
     }
 
