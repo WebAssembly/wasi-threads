@@ -1,12 +1,6 @@
-#!/bin/bash
+#! /bin/sh
 
-CC=${CC:=clang}
+set -e
 
-for input in testsuite/*.c; do
-  output="testsuite/$(basename $input .c).wasm"
-
-  if [ "$input" -nt "$output" ]; then
-    echo "Compiling $input"
-    $CC "$input" testsuite/wasi_thread_spawn.S -o "$output"
-  fi
-done
+./scripts/build-wat.sh
+./scripts/build-c.sh
