@@ -42,7 +42,7 @@
     ;; long enough block
     ;; clock_realtime, !abstime (zeros)
     i32.const 124 ;; 100 + offsetof(subscription, timeout)
-    i64.const 1_000_000_000 ;; 1s
+    i64.const 2_000_000_000 ;; 2s
     i64.store
     i32.const 100 ;; subscription
     i32.const 200 ;; event (out)
