@@ -1,5 +1,7 @@
 # Running tests
-The following command executes wasi-threads tests using wasmtime runtime (please note wasi-threads proposal is still in development in Wasmtime and requires [this change](https://github.com/bytecodealliance/wasmtime/pull/5484) to work).
+
+The following command executes the `wasi-threads` tests using the Wasmtime
+runtime.
 
 ```bash
 git clone -b prod/testsuite-all https://github.com/WebAssembly/wasi-testsuite
