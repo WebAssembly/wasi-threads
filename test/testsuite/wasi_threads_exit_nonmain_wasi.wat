@@ -3,9 +3,9 @@
 ;;
 ;; linear memory usage:
 ;;   0: wait
-;;   100: poll_oneoff subscription
-;;   200: poll_oneoff event
-;;   300: poll_oneoff return value
+;;   0x100: poll_oneoff subscription
+;;   0x200: poll_oneoff event
+;;   0x300: poll_oneoff return value
 
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
@@ -41,13 +41,13 @@
     end
     ;; long enough block
     ;; clock_realtime, !abstime (zeros)
-    i32.const 124 ;; 100 + offsetof(subscription, timeout)
+    i32.const 0x118 ;; 0x100 + offsetof(subscription, timeout)
     i64.const 1_000_000_000 ;; 1s
     i64.store
-    i32.const 100 ;; subscription
-    i32.const 200 ;; event (out)
+    i32.const 0x100 ;; subscription
+    i32.const 0x200 ;; event (out)
     i32.const 1   ;; nsubscriptions
-    i32.const 300 ;; retp (out)
+    i32.const 0x300 ;; retp (out)
     call $poll_oneoff
     unreachable
   )
