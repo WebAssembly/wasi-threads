@@ -68,7 +68,7 @@ int main(int argc, char **argv)
         assert(data[i].tid == tid[i]);
         assert(data[i].value == 60);
 
-        for (j = i + 1; j < data_count; j++)
+        for (j = 0; j < i; j++)
         {
             assert(data[i].tid != data[j].tid);
         }
