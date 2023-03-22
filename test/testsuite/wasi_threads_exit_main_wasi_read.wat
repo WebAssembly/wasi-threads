@@ -1,5 +1,5 @@
 ;; When the main thread calls proc_exit, it should terminate
-;; a thread blocking in a WASI call. (poll_oneoff)
+;; a thread blocking in a WASI call. (fd_read)
 ;;
 ;; assumption: read from FD 0 blocks.
 ;;
