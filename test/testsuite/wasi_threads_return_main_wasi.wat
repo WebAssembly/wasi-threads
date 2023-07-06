@@ -10,7 +10,6 @@
 (module
   (memory (export "memory") (import "foo" "bar") 1 1 shared)
   (func $thread_spawn (import "wasi" "thread-spawn") (param i32) (result i32))
-  (func $proc_exit (import "wasi_snapshot_preview1" "proc_exit") (param i32))
   (func $poll_oneoff (import "wasi_snapshot_preview1" "poll_oneoff") (param i32 i32 i32 i32) (result i32))
   (func (export "wasi_thread_start") (param i32 i32)
     ;; long enough block
