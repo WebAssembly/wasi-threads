@@ -8,7 +8,11 @@ API to add native thread support.
 > on threads will happen in the [shared-everything-threads] proposal which adds
 > component model [built-ins] for thread spawning, among other things. The goal
 > is that WASI v0.2 and following will use [shared-everything-threads] (once
-> fully implemented) and this proposal can eventually be removed.
+> fully implemented) and this proposal can eventually be removed. In the
+> meantime, users experimenting with this proposal can continue to get help
+> with questions and bugs by opening issues on this repository and tagging
+> various WAMR maintainers who plan to continue supporting WASI v0.1 (e.g.,
+> @loganek, @yamt, @wenyongh).
 
 [shared-everything-threads]: https://github.com/WebAssembly/shared-everything-threads
 [built-ins]: https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-threads
